@@ -1,0 +1,6 @@
+@AggregatedAPI_TravelCompanion_HostAddress = http://localhost:5133
+
+GET {{AggregatedAPI_TravelCompanion_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
