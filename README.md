@@ -14,7 +14,7 @@
 **2. Navigate to the project directory: Open a Git Bash terminal and navigate to the directory where you cloned the project, then:**
 
 ```bash
-cd AggregatedAPI_TravelCompanion
+cd TravelCompanyAPI/AggregatedAPI_TravelCompanion
 ```
 
 **3. Build and run the API: Execute the following commands to build and start the API service:**
