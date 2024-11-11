@@ -1,0 +1,84 @@
+﻿using Moq;
+using Newtonsoft.Json;
+using System.Net;
+using AggregatedAPI_TravelCompanion.Services.LocationService;
+using AggregatedAPI_TravelCompanion.DataTransferObjects.LocationDTO;
+using Moq.Protected;
+
+namespace AggregatedAPI_TravelCompanion.Tests;
+
+public class LocationServiceTests
+{
+    private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
+    private readonly HttpClient _httpClient;
+    private readonly LocationService _locationService;
+
+    public LocationServiceTests()
+    {
+        // Create a mock HttpMessageHandler
+        _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+
+        // Pass the mock handler to HttpClient
+        _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
+
+        // Initialize the LocationService with the mock HttpClient
+        _locationService = new LocationService(_httpClient);
+    }
+
+    [Fact]
+    public async Task GetLocationInfo_ReturnsLocationInfo_WhenApiResponseIsValid()
+    {
+        var locationRequest = new LocationRequest
+        {
+            Country = "USA",
+            State = "CA",
+            City = "San Francisco",
+            PostalCode = "94105",
+            Street = "Market Street"
+        };
+
+        var locationResponse = new LocationResponse
+        {
+            features = new[]
+            {
+                new Feature
+                {
+                    properties = new Properties
+                    {
+                        lon = -122.4194f,
+                        lat = 37.7749f,
+                        address_line2 = "Some Address"
+                    }
+                }
+            }
+        };
+
+        // Convert the response data to JSON
+        var jsonResponse = JsonConvert.SerializeObject(locationResponse);
+
+        // Create a mock HttpResponseMessage with the successful response
+        var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(jsonResponse)
+        };
+
+        // Setup the mock HttpMessageHandler to return the mock response
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                ItExpr.IsAny<System.Threading.CancellationToken>())
+            .ReturnsAsync(httpResponseMessage);  // Return the mock response
+
+        // Act: Call the GetLocationInfo method
+        var result = await _locationService.GetLocationInfo(locationRequest);
+
+        // Assert: Check if the returned result is correct
+        Assert.True(result.IsSuccess);  // Check if the operation was successful
+        Assert.NotNull(result.Data);  // Check if the data is not null
+        Assert.Equal(23.7397f, result.Data.Longitude);  // Check if the Longitude matches
+        Assert.Equal(38.0420f, result.Data.Latitude);  // Check if the Latitude matches
+        Assert.Equal("Greece", result.Data.Address);  // Check if the Address matches
+    }
+}

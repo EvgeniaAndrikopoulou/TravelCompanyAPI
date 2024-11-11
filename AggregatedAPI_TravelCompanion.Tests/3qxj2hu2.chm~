@@ -1,0 +1,236 @@
+﻿using Moq;
+using Moq.Protected;
+using Newtonsoft.Json;
+using System.Net;
+using AggregatedAPI_TravelCompanion.Services.LandmarkService;
+using AggregatedAPI_TravelCompanion.DataTransferObjects.LandmarkDTO;
+
+namespace AggregatedAPI_TravelCompanion.Tests;
+
+public class LandmarkServiceTests
+{
+    private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
+    private readonly HttpClient _httpClient;
+    private readonly LandmarkService _landmarkService;
+
+    public LandmarkServiceTests()
+    {
+        _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
+        _landmarkService = new LandmarkService(_httpClient);
+    }
+
+    [Fact]
+    public async Task GetLandmarkInfo_ReturnsLandmarks_WhenApiResponseIsValid()
+    {
+        // Arrange
+        var landmarkRequest = new LandmarkRequest
+        {
+            Latitude = 37.7749f,
+            Longitude = -122.4194f,
+            Category = "museum",
+            NameFilter = "name"
+        };
+
+        var landmarkResponse = new LandmarkResponse
+        {
+            results = new[]
+            {
+                new Result
+                {
+                    name = "The Getty Center",
+                    categories = new[]
+                    {
+                        new Category { short_name = "Museum" }
+                    },
+                    location = new Location { formatted_address = "1200 Getty Center Dr, Los Angeles, CA" }
+                }
+            }
+        };
+
+        var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+
+        var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(jsonResponse)
+        };
+
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponseMessage);
+
+        // Act
+        var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Data);
+        Assert.Single(result.Data); // Should have one landmark
+        Assert.Equal("The Getty Center", result.Data[0].Name);
+        Assert.Equal("Museum", result.Data[0].ShortName);
+        Assert.Equal("1200 Getty Center Dr, Los Angeles, CA", result.Data[0].FormattedAddress);
+    }
+
+    [Fact]
+    public async Task GetLandmarkInfo_ReturnsError_WhenApiReturnsError()
+    {
+        // Arrange
+        var landmarkRequest = new LandmarkRequest
+        {
+            Latitude = 37.7749f,
+            Longitude = -122.4194f,
+            Category = "museum"
+        };
+
+        var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent("Internal Server Error")
+        };
+
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponseMessage);
+
+        // Act
+        var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("An error occurred fetching landmark data: InternalServerError", result.Message);
+    }
+
+    [Fact]
+    public async Task GetLandmarkInfo_ReturnsError_WhenApiReturnsEmptyLandmarks()
+    {
+        // Arrange
+        var landmarkRequest = new LandmarkRequest
+        {
+            Latitude = 37.7749f,
+            Longitude = -122.4194f,
+            Category = "museum"
+        };
+
+        var landmarkResponse = new LandmarkResponse
+        {
+            results = new Result[0]
+        };
+
+        var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+
+        var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(jsonResponse)
+        };
+
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponseMessage);
+
+        // Act
+        var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("No Landmark Data Found", result.Message);
+    }
+
+    [Fact]
+    public async Task GetLandmarkInfo_ReturnsError_WhenExceptionOccurs()
+    {
+        // Arrange
+        var landmarkRequest = new LandmarkRequest
+        {
+            Latitude = 37.7749f,
+            Longitude = -122.4194f,
+            Category = "museum"
+        };
+
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Network error"));
+
+        // Act
+        var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("An error occurred fetching landmark data: Network error", result.Message);
+    }
+
+    [Fact]
+    public async Task GetLandmarkInfo_ReturnsFilteredLandmarks_WhenNameFilterIsApplied()
+    {
+        // Arrange
+        var landmarkRequest = new LandmarkRequest
+        {
+            Latitude = 37.7749f,
+            Longitude = -122.4194f,
+            Category = "museum",
+            NameFilter = "Getty"
+        };
+
+        var landmarkResponse = new LandmarkResponse
+        {
+            results = new[]
+            {
+                new Result
+                {
+                    name = "The Getty Center",
+                    categories = new[]
+                    {
+                        new Category { short_name = "Museum" }
+                    },
+                    location = new Location { formatted_address = "1200 Getty Center Dr, Los Angeles, CA" }
+                },
+                new Result
+                {
+                    name = "Hollywood Walk of Fame",
+                    categories = new[]
+                    {
+                        new Category { short_name = "Tourist" }
+                    },
+                    location = new Location { formatted_address = "Hollywood Blvd, Los Angeles, CA" }
+                }
+            }
+        };
+
+        var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+
+        var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(jsonResponse)
+        };
+
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponseMessage);
+
+        // Act
+        var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Data); // Only one landmark should be returned after filtering
+        Assert.Equal("The Getty Center", result.Data[0].Name);
+    }
+}

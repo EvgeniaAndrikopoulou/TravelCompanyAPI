@@ -1,0 +1,82 @@
+﻿using Moq;
+using Moq.Protected;
+using Newtonsoft.Json;
+using System.Net;
+using System.Threading.Tasks;
+using AggregatedAPI_TravelCompanion.Services.LandmarkService;
+using AggregatedAPI_TravelCompanion.DataTransferObjects.LandmarkDTO;
+using AggregatedAPI_TravelCompanion.Models.LandmarkModels;
+using RestSharp;
+using Xunit;
+
+namespace AggregatedAPI_TravelCompanion.Tests
+{
+    public class LandmarkServiceTests
+    {
+        private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
+        private readonly HttpClient _httpClient;
+        private readonly LandmarkService _landmarkService;
+
+        public LandmarkServiceTests()
+        {
+            _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+            _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
+            _landmarkService = new LandmarkService(_httpClient);
+        }
+
+        [Fact]
+        public async Task GetLandmarkInfo_ReturnsLandmarkInfo_WhenApiResponseIsValid()
+        {
+            // Arrange
+            var landmarkRequest = new LandmarkRequest
+            {
+                Latitude = 37.7749f,
+                Longitude = -122.4194f,
+                Category = "tourist_attraction"
+            };
+
+            var landmarkResponse = new LandmarkResponse
+            {
+                results = new[]
+                {
+                    new Result
+                    {
+                        fsq_id = "1",
+                        name = "Golden Gate Bridge",
+                        categories = new[]
+                        {
+                            new Category { short_name = "Bridge" }
+                        },
+                        location = new Location { formatted_address = "San Francisco, CA" }
+                    }
+                }
+            };
+
+            var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(jsonResponse)
+            };
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
+
+            // Act
+            var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+            // Assert
+            Assert.True(result.IsSuccess);
+            Assert.NotNull(result.Data);
+            Assert.Single(result.Data);
+            Assert.Equal("Golden Gate Bridge", result.Data[0].Name);
+            Assert.Equal("Bridge", result.Data[0].ShortName);
+            Assert.Equal("San Francisco, CA", result.Data[0].FormattedAddress);
+        }
+
+    }
+}

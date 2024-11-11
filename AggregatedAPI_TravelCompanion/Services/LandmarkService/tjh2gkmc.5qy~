@@ -3,7 +3,6 @@ using AggregatedAPI_TravelCompanion.DataTransferObjects.ExternalApiDTO;
 using AggregatedAPI_TravelCompanion.DataTransferObjects.LandmarkDTO;
 using AggregatedAPI_TravelCompanion.Models.LandmarkModels;
 using RestSharp;
-using System.Web;
 
 namespace AggregatedAPI_TravelCompanion.Services.LandmarkService;
 
@@ -14,53 +13,33 @@ public class LandmarkService : ILandmarkService
     {
         _httpClient = httpClient;
     }
-
-    // Virtual method to create the RestClient, allowing for overriding in tests
-    public virtual IRestClient CreateRestClient()
-    {
-        var options = new RestClientOptions("https://api.foursquare.com/v3/places/nearby");
-        return new RestClient(options);
-    }
-
     public async Task<ServiceResponse<List<LandmarkInfo>>> GetLandmarkInfo(LandmarkRequest landmarkRequest)
     {
         var serviceResponse = new ServiceResponse<List<LandmarkInfo>>();
 
-        var uriBuilder = new UriBuilder("https://api.foursquare.com/v3/places/nearby");
+        var options = new RestClientOptions(UtilityConfig.LandmarkBaseAPI);
+        var client = new RestClient(options);
+        var request = new RestRequest("");
 
-        //var query = HttpUtility.ParseQueryString(string.Empty);
-        //query["fields"] = "fsq_id,name,categories,location,link";
-        //query["II"] = $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}";
-        //query["limit"] = "50";
-        //query["categories"] = $"{landmarkRequest.Category}";
-
-        //uriBuilder.Query = query.ToString();
-
+        request.AddParameter("fields", "fsq_id,name,categories,location,link");
+        request.AddParameter("II", $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}");
+        request.AddParameter("limit", "50");
+        request.AddParameter("categories", landmarkRequest.Category);
+        request.AddHeader("accept", "application/json");
+        request.AddHeader("Authorization", UtilityConfig.LandmarkKeyAPI);
+        
         try
         {
-            var client = CreateRestClient();
-            var request = new RestRequest("");
-            ////var client = new RestClient(options);
-
-            //var request = new RestRequest("");
-            request.AddParameter("fields", "fsq_id,name,categories,location,link");
-            request.AddParameter("II", $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}");
-            request.AddParameter("limit", "50");
-            request.AddParameter("categories", landmarkRequest.Category);
-
-            request.AddHeader("accept", "application/json");
-            request.AddHeader("Authorization", "fsq3uU6ytMSJDfwcCDDE6WG3z5rejVkiF8S1fRUWb92/TdY=");
-
             var response = await client.ExecuteAsync<LandmarkResponse>(request);
 
             if (!response.IsSuccessful)
             {
                 serviceResponse.IsSuccess = false;
-                serviceResponse.Message = $"An error occurred fetching landmark data: {response.StatusCode}";
+                serviceResponse.Message = $"Landmark API error: {response.StatusCode}";
                 return serviceResponse;
             }
 
-            if(response.Data == null || response.Data.results == null || response.Data.results.Length == 0)
+            if(response.Data is null)
             {
                 serviceResponse.IsSuccess = false;
                 serviceResponse.Message = "No Landmark Data Found";
@@ -90,15 +69,11 @@ public class LandmarkService : ILandmarkService
                 }
             }
 
-            else if (!string.IsNullOrEmpty(landmarkRequest.SortBy))
+            if (!string.IsNullOrEmpty(landmarkRequest.SortBy))
             {
                 serviceResponse.Data = SortLandmarks(serviceResponse.Data, landmarkRequest.SortBy, landmarkRequest.SortOrder);
             }
-            else
-            {
-                serviceResponse.Data = landmarks;
-            }
-            
+
             serviceResponse.IsSuccess = true;
             return serviceResponse;
 

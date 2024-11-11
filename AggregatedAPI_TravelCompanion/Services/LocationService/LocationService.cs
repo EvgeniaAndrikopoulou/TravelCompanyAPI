@@ -45,56 +45,44 @@ public class LocationService : ILocationService
 
             apiResponse = await _httpClient.SendAsync(message);
 
-            switch (apiResponse.StatusCode)
+            if (!apiResponse.IsSuccessStatusCode)
             {
-                case System.Net.HttpStatusCode.NotFound:
-                    return new() { IsSuccess = false, Message = "Not Found" };
-                case System.Net.HttpStatusCode.Forbidden:
-                    return new() { IsSuccess = false, Message = "Forbidden" };
-                case System.Net.HttpStatusCode.Unauthorized:
-                    return new() { IsSuccess = false, Message = "Unauthorized" };
-                case System.Net.HttpStatusCode.InternalServerError:
-                    return new() { IsSuccess = false, Message = "InternalServerError" };
-                default:
-                    var apiContent = await apiResponse.Content.ReadAsStringAsync();
-                    var apiResponseDto = JsonConvert.DeserializeObject<LocationResponse>(apiContent);
-
-                    if(apiResponseDto is null)
-                    {
-                        serviceResponse.IsSuccess = false;
-                        serviceResponse.Message = "No Location Data Found";
-                        return serviceResponse;
-                    }
-
-                    //var desiredLocation = apiResponseDto.features.FirstOrDefault(l => l.properties.address_line1.Contains(locationRequest.PostalCode.Insert(3, " ")));
-                    var desiredLocation = apiResponseDto.features.FirstOrDefault();
-
-                    if (desiredLocation is null)
-                    {
-                        serviceResponse.IsSuccess = false;
-                        serviceResponse.Message = "No Selected Location Found";
-
-                        return serviceResponse;
-                    }
-
-                    var locationInfo = new LocationInfo
-                    {
-                        Longitude = desiredLocation.properties.lon,
-                        Latitude = desiredLocation.properties.lat
-                    };
-                    
-                    serviceResponse.IsSuccess = true;
-                    serviceResponse.Data = locationInfo;
-                    return serviceResponse;
-
+                serviceResponse.IsSuccess = false;
+                serviceResponse.Message = $"Location API error: {apiResponse.StatusCode}";
+                return serviceResponse;
             }
 
+            var apiContent = await apiResponse.Content.ReadAsStringAsync();
+            var apiResponseDto = JsonConvert.DeserializeObject<LocationResponse>(apiContent);
 
+            if (apiResponseDto?.features == null || !apiResponseDto.features.Any())
+            {
+                serviceResponse.IsSuccess = false;
+                serviceResponse.Message = "No Location Data Found";
+                return serviceResponse;
+            }
+
+            var desiredLocation = apiResponseDto.features.FirstOrDefault();
+            if (desiredLocation == null)
+            {
+                serviceResponse.IsSuccess = false;
+                serviceResponse.Message = "No Selected Location Found";
+                return serviceResponse;
+            }
+
+            serviceResponse.Data = new LocationInfo
+            {
+                Longitude = desiredLocation.properties.lon,
+                Latitude = desiredLocation.properties.lat,
+                Address = desiredLocation.properties.address_line2
+            };
+            serviceResponse.IsSuccess = true;
+            return serviceResponse;
         }
         catch (Exception ex)
         {
             serviceResponse.IsSuccess = false;
-            serviceResponse.Message = ex.Message;
+            serviceResponse.Message = $"An error occurred fetching location data: {ex.Message}";
 
             return serviceResponse;
         }

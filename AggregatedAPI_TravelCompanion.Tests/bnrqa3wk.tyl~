@@ -1,0 +1,273 @@
+﻿using Moq;
+using Moq.Protected;
+using Newtonsoft.Json;
+using System.Net;
+using System.Threading.Tasks;
+using AggregatedAPI_TravelCompanion.Services.LandmarkService;
+using AggregatedAPI_TravelCompanion.DataTransferObjects.LandmarkDTO;
+using AggregatedAPI_TravelCompanion.Models.LandmarkModels;
+using AggregatedAPI_TravelCompanion.DataTransferObjects.ExternalApiDTO;
+using System.Collections.Generic;
+using System.Linq;
+using Xunit;
+
+namespace AggregatedAPI_TravelCompanion.Tests
+{
+    public class LandmarkServiceTests
+    {
+        private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
+        private readonly HttpClient _httpClient;
+        private readonly LandmarkService _landmarkService;
+
+        public LandmarkServiceTests()
+        {
+            _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+            _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
+            _landmarkService = new LandmarkService(_httpClient);
+        }
+
+        [Fact]
+        public async Task GetLandmarkInfo_ReturnsLandmarks_WhenApiResponseIsValid()
+        {
+            var landmarkRequest = new LandmarkRequest
+            {
+                Latitude = 37.7749f,
+                Longitude = -122.4194f,
+                Category = "tourist_attraction"
+            };
+
+            var landmarkResponse = new LandmarkResponse
+            {
+                results = new[]
+                {
+                    new Result
+                    {
+                        name = "Golden Gate Bridge",
+                        categories = new[] { new Category { short_name = "Bridge" } },
+                        location = new Location { formatted_address = "San Francisco, CA" }
+                    }
+                }
+            };
+
+            var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(jsonResponse)
+            };
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
+
+            var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+            Assert.True(result.IsSuccess);
+            Assert.NotNull(result.Data);
+            Assert.Single(result.Data);
+            Assert.Equal("Golden Gate Bridge", result.Data.First().Name);
+        }
+
+        [Fact]
+        public async Task GetLandmarkInfo_ReturnsError_WhenApiReturnsError()
+        {
+            var landmarkRequest = new LandmarkRequest
+            {
+                Latitude = 37.7749f,
+                Longitude = -122.4194f,
+                Category = "tourist_attraction"
+            };
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent("Internal Server Error")
+            };
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
+
+            var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal("Landmark API error: BadRequest", result.Message);
+        }
+
+        [Fact]
+        public async Task GetLandmarkInfo_ReturnsError_WhenNoLandmarkDataFound()
+        {
+            var landmarkRequest = new LandmarkRequest
+            {
+                Latitude = 37.7749f,
+                Longitude = -122.4194f,
+                Category = "tourist_attraction"
+            };
+
+            var landmarkResponse = new LandmarkResponse
+            {
+                results = new Result[0]
+            };
+
+            var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(jsonResponse)
+            };
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
+
+            var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal("No Landmark Data Found", result.Message);
+        }
+
+        [Fact]
+        public async Task GetLandmarkInfo_ReturnsFilteredLandmarks_WhenNameFilterIsApplied()
+        {
+            var landmarkRequest = new LandmarkRequest
+            {
+                Latitude = 37.7749f,
+                Longitude = -122.4194f,
+                Category = "tourist_attraction",
+                NameFilter = "Golden"
+            };
+
+            var landmarkResponse = new LandmarkResponse
+            {
+                results = new[]
+                {
+                    new Result
+                    {
+                        name = "Golden Gate Bridge",
+                        categories = new[] { new Category { short_name = "Bridge" } },
+                        location = new Location { formatted_address = "San Francisco, CA" }
+                    },
+                    new Result
+                    {
+                        name = "Fisherman's Wharf",
+                        categories = new[] { new Category { short_name = "Wharf" } },
+                        location = new Location { formatted_address = "San Francisco, CA" }
+                    }
+                }
+            };
+
+            var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(jsonResponse)
+            };
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
+
+            var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Data);
+            Assert.Equal("Golden Gate Bridge", result.Data.First().Name);
+            Assert.Equal("Landmarks filtered by name 'Golden'.", result.Message);
+        }
+
+        [Fact]
+        public async Task GetLandmarkInfo_ReturnsSortedLandmarks_WhenSortByIsApplied()
+        {
+            var landmarkRequest = new LandmarkRequest
+            {
+                Latitude = 37.7749f,
+                Longitude = -122.4194f,
+                Category = "tourist_attraction",
+                SortBy = "name",
+                SortOrder = "desc"
+            };
+
+            var landmarkResponse = new LandmarkResponse
+            {
+                results = new[]
+                {
+                    new Result
+                    {
+                        name = "Golden Gate Bridge",
+                        categories = new[] { new Category { short_name = "Bridge" } },
+                        location = new Location { formatted_address = "San Francisco, CA" }
+                    },
+                    new Result
+                    {
+                        name = "Fisherman's Wharf",
+                        categories = new[] { new Category { short_name = "Wharf" } },
+                        location = new Location { formatted_address = "San Francisco, CA" }
+                    }
+                }
+            };
+
+            var jsonResponse = JsonConvert.SerializeObject(landmarkResponse);
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(jsonResponse)
+            };
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
+
+            var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("Fisherman's Wharf", result.Data.First().Name);  // Sorted in descending order
+        }
+
+        [Fact]
+        public async Task GetLandmarkInfo_ReturnsError_WhenExceptionOccurs()
+        {
+            var landmarkRequest = new LandmarkRequest
+            {
+                Latitude = 37.7749f,
+                Longitude = -122.4194f,
+                Category = "tourist_attraction"
+            };
+
+            // Simulate an exception occurring during the API call
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.IsAny<System.Threading.CancellationToken>())
+                .ThrowsAsync(new Exception("Simulated network error"));
+
+            var result = await _landmarkService.GetLandmarkInfo(landmarkRequest);
+
+            // Assert that the service responded with the expected error message
+            Assert.False(result.IsSuccess);
+            Assert.StartsWith("An error occurred fetching landmark data:", result.Message);  // Expect the message to start with this text
+            Assert.Contains("Simulated network error", result.Message);  // Ensure the simulated error is in the message
+        }
+
+    }
+}

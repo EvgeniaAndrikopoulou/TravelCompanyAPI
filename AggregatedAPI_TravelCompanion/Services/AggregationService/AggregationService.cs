@@ -26,6 +26,7 @@ public class AggregationService : IAggregationService
     public async Task<ServiceResponse<AggregatedData>> GetAggregatedDataAsync(AggregatedDataRequest request)
     {
         var serviceResponse = new ServiceResponse<AggregatedData>();
+        var aggregatedData = new AggregatedData { Landmarks = new List<LandmarkInfo>() };
 
         var locationResponse = await _location.GetLocationInfo(new LocationRequest
         {
@@ -36,86 +37,56 @@ public class AggregationService : IAggregationService
             Street = request.Street
         });
 
-        if (!locationResponse.IsSuccess)
+        if (locationResponse.IsSuccess && locationResponse.Data != null)
         {
-            serviceResponse.IsSuccess = false;
-            serviceResponse.Message = locationResponse.Message;
+            aggregatedData.Address = locationResponse.Data.Address;
+            var weatherResponse = await _weather.GetWeatherInfo(new WeatherRequest
+            {
+                Latitude = locationResponse.Data.Latitude,
+                Longitude = locationResponse.Data.Longitude
+            });
 
-            return serviceResponse;
+            if(weatherResponse.IsSuccess && weatherResponse.Data != null)
+            {
+                aggregatedData.Temperature = weatherResponse.Data.Temperature;
+                aggregatedData.FeeelsLikeTemperature = weatherResponse.Data.FeeelsLikeTemperature;
+                aggregatedData.WeatherDescription = weatherResponse.Data.Description;
+            }
+            else
+            {
+                serviceResponse.Message += $"Weather info unavailable: {weatherResponse.Message}. ";
+            }
+
         }
-
-        if(locationResponse.Data is null)
+        else
         {
-            serviceResponse.IsSuccess = false;
-            serviceResponse.Message = "Something went wrong with location.";
-
-            return serviceResponse;
+            serviceResponse.Message += $"Location info unavailable: {locationResponse.Message}. ";
         }
-
-        var weatherResponse = await _weather.GetWeatherInfo(new WeatherRequest
-        {
-            Latitude = locationResponse.Data.Latitude,
-            Longitude = locationResponse.Data.Longitude
-        });
-
-        if (!weatherResponse.IsSuccess)
-        {
-            serviceResponse.IsSuccess = false;
-            serviceResponse.Message = weatherResponse.Message;
-
-            return serviceResponse;
-        }
-
-        if(weatherResponse.Data is null)
-        {
-            serviceResponse.IsSuccess = false;
-            serviceResponse.Message = "Something went wrong with weather.";
-
-            return serviceResponse;
-        }
-
-        serviceResponse.Data = new AggregatedData
-        {
-            Temperature = weatherResponse.Data.Temperature,
-            FeeelsLikeTemperature = weatherResponse.Data.FeeelsLikeTemperature,
-            WeatherDescription = weatherResponse.Data.Description,
-            Landmarks = new List<LandmarkInfo>()
-        };
 
         var landMarkResponse = await _landmark.GetLandmarkInfo(new LandmarkRequest
         {
-            Latitude = locationResponse.Data.Latitude,
-            Longitude = locationResponse.Data.Longitude,
+            //Latitude = locationResponse.Data.Latitude,
+            //Longitude = locationResponse.Data.Longitude,
+            Latitude = locationResponse?.Data?.Latitude ?? 0,
+            Longitude = locationResponse?.Data?.Longitude ?? 0,
             Category = request.LandmarkCategory,
             SortBy = request.SortBy,
             SortOrder = request.SortOrder,
             NameFilter = request.LandmarkNameFilter
         });
 
-        if (!landMarkResponse.IsSuccess) 
+        if (landMarkResponse.IsSuccess && landMarkResponse.Data != null)
         {
-            serviceResponse.IsSuccess = false;
-            serviceResponse.Message = landMarkResponse.Message;
-
-            return serviceResponse;
+            aggregatedData.Landmarks = landMarkResponse.Data;
+        }
+        else
+        {
+            serviceResponse.Message += $"Landmark info unavailable: {landMarkResponse.Message}. ";
         }
 
-        if(landMarkResponse.Data is null)
-        {
-            serviceResponse.IsSuccess = false;
-            serviceResponse.Message = "Something went wrong with landmarks.";
-
-            return serviceResponse;
-        }
-
-        foreach(var item in landMarkResponse.Data)
-        {
-            serviceResponse.Data.Landmarks.Add(item);
-        }
-
+        serviceResponse.Data = aggregatedData;
         serviceResponse.IsSuccess = true;
-        serviceResponse.Message = "Aggregated data successfully retrieved.";
-
+        serviceResponse.Message += "Aggregated data retrieved with available results.";
         return serviceResponse;
     }
 }

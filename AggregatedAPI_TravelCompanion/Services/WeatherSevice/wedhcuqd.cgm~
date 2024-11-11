@@ -18,7 +18,7 @@ public class WeatherService : IWeatherService
     {
         var serviceResponse = new ServiceResponse<WeatherInfo>();
 
-        var uriBuilder = new UriBuilder("https://api.openweathermap.org/data/3.0/onecall/timemachine");
+        var uriBuilder = new UriBuilder(UtilityConfig.WeatherBaseAPI);
 
         var query = HttpUtility.ParseQueryString(string.Empty);
         query["lat"] = weatherRequest.Latitude.ToString();
@@ -38,7 +38,11 @@ public class WeatherService : IWeatherService
 
             message.RequestUri = new Uri(uriBuilder.ToString());
             message.Method = HttpMethod.Get;
-            
+
+            //HttpResponseMessage apiResponse = new HttpResponseMessage();
+
+            //message.Method = HttpMethod.Get;
+
             var apiResponse = await _httpClient.SendAsync(message);
 
             if (!apiResponse.IsSuccessStatusCode)
@@ -69,6 +73,51 @@ public class WeatherService : IWeatherService
 
             serviceResponse.IsSuccess = true;
             return serviceResponse;
+
+            //switch (apiResponse.StatusCode)
+            //{
+                //case System.Net.HttpStatusCode.NotFound:
+                //    return new() { IsSuccess = false, Message = "Not Found" };
+                //case System.Net.HttpStatusCode.Forbidden:
+                //    return new() { IsSuccess = false, Message = "Forbidden" };
+                //case System.Net.HttpStatusCode.Unauthorized:
+                //    return new() { IsSuccess = false, Message = "Unauthorized" };
+                //case System.Net.HttpStatusCode.InternalServerError:
+                //    return new() { IsSuccess = false, Message = "InternalServerError" };
+                //default:
+                    //var apiContent = await apiResponse.Content.ReadAsStringAsync();
+                    //var apiResponseDto = JsonConvert.DeserializeObject<WeatherResponse>(apiContent);
+
+                    //if (apiResponseDto is null)
+                    //{
+                    //    serviceResponse.IsSuccess = false;
+                    //    serviceResponse.Message = "No weather Data Found";
+                    //    return serviceResponse;
+                    //}
+
+                    //var weatherInfo = apiResponseDto.data;
+                    //if(weatherInfo is null)
+                    //{
+                    //    serviceResponse.IsSuccess = false;
+                    //    serviceResponse.Message = "No weather Data info Found";
+                    //    return serviceResponse;
+                    //}
+
+                    //serviceResponse.Data = new WeatherInfo
+                    //{
+                    //    Temperature = weatherInfo[0].temp,
+                    //    FeeelsLikeTemperature = weatherInfo[0].feels_like,
+                    //    ShortDescription = weatherInfo[0].weather[0].main,
+                    //    Description = weatherInfo[0].weather[0].description
+                    //};
+                    
+
+                    //serviceResponse.IsSuccess = true;
+                    //return serviceResponse;
+
+            //}
+
+
         }
         catch (Exception ex)
         {

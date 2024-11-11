@@ -14,35 +14,26 @@ public class LandmarkService : ILandmarkService
     {
         _httpClient = httpClient;
     }
-
-    // Virtual method to create the RestClient, allowing for overriding in tests
-    public virtual IRestClient CreateRestClient()
-    {
-        var options = new RestClientOptions("https://api.foursquare.com/v3/places/nearby");
-        return new RestClient(options);
-    }
-
     public async Task<ServiceResponse<List<LandmarkInfo>>> GetLandmarkInfo(LandmarkRequest landmarkRequest)
     {
         var serviceResponse = new ServiceResponse<List<LandmarkInfo>>();
 
         var uriBuilder = new UriBuilder("https://api.foursquare.com/v3/places/nearby");
 
-        //var query = HttpUtility.ParseQueryString(string.Empty);
-        //query["fields"] = "fsq_id,name,categories,location,link";
-        //query["II"] = $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}";
-        //query["limit"] = "50";
-        //query["categories"] = $"{landmarkRequest.Category}";
+        var query = HttpUtility.ParseQueryString(string.Empty);
+        query["fields"] = "fsq_id,name,categories,location,link";
+        query["II"] = $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}";
+        query["limit"] = "50";
+        query["categories"] = $"{landmarkRequest.Category}";
 
-        //uriBuilder.Query = query.ToString();
+        uriBuilder.Query = query.ToString();
 
         try
         {
-            var client = CreateRestClient();
-            var request = new RestRequest("");
-            ////var client = new RestClient(options);
+            var options = new RestClientOptions("https://api.foursquare.com/v3/places/nearby");
+            var client = new RestClient(options);
 
-            //var request = new RestRequest("");
+            var request = new RestRequest("");
             request.AddParameter("fields", "fsq_id,name,categories,location,link");
             request.AddParameter("II", $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}");
             request.AddParameter("limit", "50");
@@ -67,40 +58,40 @@ public class LandmarkService : ILandmarkService
                 return serviceResponse;
             }
 
-            var landmarks = response.Data.results.Select(landmark => new LandmarkInfo
-            {
-                Name = landmark.name,
-                ShortName = landmark.categories.First().short_name,
-                FormattedAddress = landmark.location?.formatted_address ?? "Address Unavailable"
-            }).ToList();
-
-            if (!string.IsNullOrEmpty(landmarkRequest.NameFilter))
-            {
-                var filteredLandmarks = FilterLandmarksByName(landmarks, landmarkRequest.NameFilter);
-
-                if (!filteredLandmarks.Any())
-                {
-                    serviceResponse.Message = $"No landmarks found with the name '{landmarkRequest.NameFilter}'. Returning full landmark list.";
-                    serviceResponse.Data = landmarks ;
-                }
-                else
-                {
-                    serviceResponse.Message = $"Landmarks filtered by name '{landmarkRequest.NameFilter}'.";
-                    serviceResponse.Data = filteredLandmarks;
-                }
-            }
-
-            else if (!string.IsNullOrEmpty(landmarkRequest.SortBy))
-            {
-                serviceResponse.Data = SortLandmarks(serviceResponse.Data, landmarkRequest.SortBy, landmarkRequest.SortOrder);
-            }
             else
             {
-                serviceResponse.Data = landmarks;
+                var landmarks = response.Data.results.Select(landmark => new LandmarkInfo
+                {
+                    Name = landmark.name,
+                    ShortName = landmark.categories.First().short_name,
+                    FormattedAddress = landmark.location?.formatted_address ?? "Address Unavailable"
+                }).ToList();
+
+                if (!string.IsNullOrEmpty(landmarkRequest.NameFilter))
+                {
+                    var filteredLandmarks = FilterLandmarksByName(landmarks, landmarkRequest.NameFilter);
+
+                    if (!filteredLandmarks.Any())
+                    {
+                        serviceResponse.Message = $"No landmarks found with the name '{landmarkRequest.NameFilter}'. Returning full landmark list.";
+                        serviceResponse.Data = landmarks;
+                    }
+                    else
+                    {
+                        serviceResponse.Message = $"Landmarks filtered by name '{landmarkRequest.NameFilter}'.";
+                        serviceResponse.Data = filteredLandmarks;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(landmarkRequest.SortBy))
+                {
+                    serviceResponse.Data = SortLandmarks(serviceResponse.Data, landmarkRequest.SortBy, landmarkRequest.SortOrder);
+                }
+
+                serviceResponse.IsSuccess = true;
+                return serviceResponse;
             }
             
-            serviceResponse.IsSuccess = true;
-            return serviceResponse;
 
             
         }

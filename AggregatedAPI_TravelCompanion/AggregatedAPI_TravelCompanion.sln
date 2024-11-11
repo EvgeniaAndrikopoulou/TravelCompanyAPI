@@ -5,7 +5,7 @@ VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AggregatedAPI_TravelCompanion", "AggregatedAPI_TravelCompanion.csproj", "{338EB67B-A085-4731-8705-E3CDE4FCE957}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AggregatedAPI_TravelCompanionTests", "..\AggregatedAPI_TravelCompanionTests\AggregatedAPI_TravelCompanionTests.csproj", "{2AEC22A7-FA0E-4149-8E8C-74EF5A5EE8F5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AggregatedAPI_TravelCompanion.Tests", "..\AggregatedAPI_TravelCompanion.Tests\AggregatedAPI_TravelCompanion.Tests.csproj", "{6E6D57B2-7215-4C34-ACC5-A84936CA8A46}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{338EB67B-A085-4731-8705-E3CDE4FCE957}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{338EB67B-A085-4731-8705-E3CDE4FCE957}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{338EB67B-A085-4731-8705-E3CDE4FCE957}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2AEC22A7-FA0E-4149-8E8C-74EF5A5EE8F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2AEC22A7-FA0E-4149-8E8C-74EF5A5EE8F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2AEC22A7-FA0E-4149-8E8C-74EF5A5EE8F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2AEC22A7-FA0E-4149-8E8C-74EF5A5EE8F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E6D57B2-7215-4C34-ACC5-A84936CA8A46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E6D57B2-7215-4C34-ACC5-A84936CA8A46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E6D57B2-7215-4C34-ACC5-A84936CA8A46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E6D57B2-7215-4C34-ACC5-A84936CA8A46}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

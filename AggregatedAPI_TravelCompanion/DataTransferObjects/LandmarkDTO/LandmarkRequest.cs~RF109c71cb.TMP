@@ -1,0 +1,11 @@
+﻿namespace AggregatedAPI_TravelCompanion.DataTransferObjects.LandmarkDTO;
+
+public class LandmarkRequest
+{
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public string Category { get; set; }
+    public string SortBy { get; set; }
+    public string SortOrder { get; set; } = "asc";
+    public string NameFilter { get; set; }
+}
