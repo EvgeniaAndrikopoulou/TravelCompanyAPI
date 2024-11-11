@@ -65,8 +65,6 @@ public class AggregationService : IAggregationService
 
         var landMarkResponse = await _landmark.GetLandmarkInfo(new LandmarkRequest
         {
-            //Latitude = locationResponse.Data.Latitude,
-            //Longitude = locationResponse.Data.Longitude,
             Latitude = locationResponse?.Data?.Latitude ?? 0,
             Longitude = locationResponse?.Data?.Longitude ?? 0,
             Category = request.LandmarkCategory,

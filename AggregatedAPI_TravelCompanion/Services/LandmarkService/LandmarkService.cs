@@ -15,7 +15,6 @@ public class LandmarkService : ILandmarkService
         _httpClient = httpClient;
     }
 
-    // Virtual method to create the RestClient, allowing for overriding in tests
     public virtual IRestClient CreateRestClient()
     {
         var options = new RestClientOptions("https://api.foursquare.com/v3/places/nearby");
@@ -26,23 +25,11 @@ public class LandmarkService : ILandmarkService
     {
         var serviceResponse = new ServiceResponse<List<LandmarkInfo>>();
 
-        var uriBuilder = new UriBuilder("https://api.foursquare.com/v3/places/nearby");
-
-        //var query = HttpUtility.ParseQueryString(string.Empty);
-        //query["fields"] = "fsq_id,name,categories,location,link";
-        //query["II"] = $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}";
-        //query["limit"] = "50";
-        //query["categories"] = $"{landmarkRequest.Category}";
-
-        //uriBuilder.Query = query.ToString();
-
         try
         {
             var client = CreateRestClient();
             var request = new RestRequest("");
-            ////var client = new RestClient(options);
 
-            //var request = new RestRequest("");
             request.AddParameter("fields", "fsq_id,name,categories,location,link");
             request.AddParameter("II", $"{landmarkRequest.Latitude}, {landmarkRequest.Longitude}");
             request.AddParameter("limit", "50");
@@ -60,7 +47,7 @@ public class LandmarkService : ILandmarkService
                 return serviceResponse;
             }
 
-            if(response.Data == null || response.Data.results == null || response.Data.results.Length == 0)
+            if (response.Data == null || response.Data.results == null || response.Data.results.Length == 0)
             {
                 serviceResponse.IsSuccess = false;
                 serviceResponse.Message = "No Landmark Data Found";
@@ -81,7 +68,7 @@ public class LandmarkService : ILandmarkService
                 if (!filteredLandmarks.Any())
                 {
                     serviceResponse.Message = $"No landmarks found with the name '{landmarkRequest.NameFilter}'. Returning full landmark list.";
-                    serviceResponse.Data = landmarks ;
+                    serviceResponse.Data = landmarks;
                 }
                 else
                 {
@@ -98,11 +85,11 @@ public class LandmarkService : ILandmarkService
             {
                 serviceResponse.Data = landmarks;
             }
-            
+
             serviceResponse.IsSuccess = true;
             return serviceResponse;
 
-            
+
         }
         catch (Exception ex)
         {
@@ -128,7 +115,7 @@ public class LandmarkService : ILandmarkService
             sortOrder = "asc";
         }
 
-        
+
         switch (sortBy)
         {
             case "name":
@@ -136,7 +123,7 @@ public class LandmarkService : ILandmarkService
                     ? landmarks.OrderByDescending(l => l.Name).ToList()
                     : landmarks.OrderBy(l => l.Name).ToList();
             default:
-                return landmarks; 
+                return landmarks;
         }
     }
 }

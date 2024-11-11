@@ -24,12 +24,8 @@ The **Aggregated API - Travel Companion** service is a .NET-based API aggregatio
 1. Clone the repository from GitHub:
 
    ```bash
-   git clone https://github.com/your-username/aggregated-api-travel-companion.git
+   git clone https://github.com/EvgeniaAndrikopoulou/TravelCompanyAPI.git
    ```
-
-### API Keys
-
-The API keys for external services are **hardcoded** into the project because unit tests could not retrieve them from the `appsettings.json` file. For security reasons, it is recommended to use environment variables or configuration files for API keys in production environments.
 
 ### Build and Run the Service
 
@@ -93,7 +89,7 @@ Each service is responsible for interacting with a specific external API. These 
     - Connects with the **OpenWeatherMap** API to retrieve weather data for a given location (latitude, longitude) at a specific time.
 
 ## 2. Aggregation Service (`AggregationService`)
-- This is the **core** of your system, where data from the external services is aggregated.
+- This is the **core** of the system, where data from the external services is aggregated.
 - It fetches location data, weather data, and landmark data, combining them into a unified response for the client.
 - It uses the services (`LocationService`, `WeatherService`, `LandmarkService`) and combines their outputs into an `AggregatedData` object.
 - If any of the individual service requests fail, it logs the error messages and still returns the aggregated data with available results.
@@ -151,18 +147,23 @@ This endpoint aggregates data from multiple external APIs (Location, Weather, an
   - `AggregatedDataRequest` (contains location details, landmark category, and optional filters)
   
 - **Responses**:
-  - **200 OK**: Successfully retrieved aggregated data, including location, weather, and landmarks.
+  - **200 OK**: Successfully retrieved aggregated data, including location, weather, and landmarks. If user fills the landmarkNameFilter field, 
+      then he can perform filtering in the landmarks collection.
   - **400 Bad Request**: Invalid input or data not found. 
 
 **Request Example**:
 ```json
 {
-  "Country": "USA",
-  "State": "California",
-  "City": "Los Angeles",
-  "LandmarkCategory": "museum",
-  "SortBy": "name",
-  "SortOrder": "asc"
+  "country": "Greece",
+  "state": "Attica",
+  "city": "Athens",
+  "postalCode": "14342",
+  "street": "Labrou Katsoni",
+  "requestedTime": "2024-11-11T15:27:38.923Z",
+  "landmarkCategory": "restaurant",
+  "sortBy": "name",
+  "sortOrder": "string",
+  "landmarkNameFilter": "bar"
 }
 ```
 
@@ -170,19 +171,30 @@ This endpoint aggregates data from multiple external APIs (Location, Weather, an
 ```json
 {
   "isSuccess": true,
+  "message": "Aggregated data retrieved with available results.",
   "data": {
-    "Address": "123 Example St, Los Angeles, CA",
-    "Temperature": 22.5,
-    "WeatherDescription": "Clear sky",
-    "Landmarks": [
+    "address": "Greece",
+    "temperature": 14.33,
+    "feeelsLikeTemperature": 13.54,
+    "weatherDescription": "broken clouds",
+    "landmarks": [
       {
-        "Name": "The Getty Center",
-        "ShortName": "museum",
-        "FormattedAddress": "1200 Getty Center Dr, Los Angeles, CA"
+        "name": "Last Row Beer Bar",
+        "formattedAddress": "Thiseos, 151 24 Μαρούσι, Αττική",
+        "shortName": "Beer Bar"
+      },
+      {
+        "name": "Barfly",
+        "formattedAddress": "Βυζαντίου 31 (Αδραμμυτίου), 171 21 Αττική, Αττική",
+        "shortName": "Pub"
+      },
+      {
+        "name": "Four Seasons Cafe Bar",
+        "formattedAddress": "Χαριλάου Τρικούπη 41, 106 81 Αθήνα, Αττική",
+        "shortName": "Internet Cafe"
       }
     ]
-  },
-  "message": "Aggregated data retrieved with available results."
+  }
 }
 ```
 
@@ -247,7 +259,7 @@ The system implements robust error handling:
 Unit testing is an essential part of ensuring the robustness of the system. The following tests have been implemented:
 
 1. **Service Unit Tests**: 
-   - Tests for LocationService and WeatherService to ensure they handle responses from external APIs correctly.
+   - Tests for LocationService, WeatherService and LandmarkService to ensure they handle responses from external APIs correctly.
    - Mocking external API calls to verify the service's response when data is returned and when errors occur.
 
 2. **Aggregation Service Tests**: 
@@ -263,17 +275,19 @@ Unit testing is an essential part of ensuring the robustness of the system. The 
 The following improvements are planned for future versions of the API:
 
 1. **More Unit Tests**
-   - Create funtional unit tests for LandmarkService
+   - Create more and better unit tests for LandmarkService
 
 2. **Caching**:
    - Implement caching mechanisms to reduce the number of calls to external APIs, improving response times and reducing costs.
 
 2. **Additional External APIs**:
-   - Integrate more external APIs (e.g., for transportation or restaurants) to enhance the data aggregation.
+   - Integrate more external APIs (e.g., for transportation or local news) to enhance the data aggregation.
 
 3. **User Authentication**:
    - Implement user authentication and authorization to allow users to save their preferences and history.
 
 4. **Error Reporting and Logging Enhancements**:
    - Improve error reporting mechanisms with more detailed logs for better debugging and tracing.
+5. **Utilize parallelism to decrease response times.**
+6. **Create an API endpoint to retrieve request statistics. **
 
